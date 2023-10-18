@@ -1,17 +1,41 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
+﻿using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CPUFramework
 {
     public class SQLUtility
     {
         public static string ConnectionString = "";
+
+        public static SqlCommand GetSQLCommand(string sprocname)
+        {
+            SqlCommand cmd;
+            using (SqlConnection conn = new(SQLUtility.ConnectionString))
+            {
+                cmd = new(sprocname, conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                conn.Open();
+                SqlCommandBuilder.DeriveParameters(cmd);
+            }
+            return cmd;
+        }
+
+        public static DataTable GetDataTable(SqlCommand cmd)
+        {
+            DataTable dt = new();
+            using (SqlConnection conn = new(SQLUtility.ConnectionString))
+            {
+                conn.Open();
+                cmd.Connection = conn;
+                SqlDataReader dr = cmd.ExecuteReader();
+                dt.Load(dr);
+            }
+            SetAllColumnsAllowNull(dt);
+            return dt;
+        }
+
         public static DataTable GetDataTable(string sqlstatement)
         {
             Debug.Print(sqlstatement);
@@ -27,6 +51,7 @@ namespace CPUFramework
             dt.Load(dr);
 
             SetAllColumnsAllowNull(dt);
+            
 
             return dt;
         }
