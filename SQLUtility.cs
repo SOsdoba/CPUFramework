@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace CPUFramework
@@ -26,6 +27,33 @@ namespace CPUFramework
         {
             return DoExecuteSQL(cmd, true);
         }
+
+        public static void SaveDataRow(DataRow row, string sprocname)
+        {
+            SqlCommand cmd = GetSQLCommand(sprocname);
+            foreach(DataColumn col in row.Table.Columns)
+            {
+                string paramname = $"@{col.ColumnName}";
+                if(cmd.Parameters.Contains(paramname))
+                {
+                    cmd.Parameters[paramname].Value = row[col.ColumnName];
+                }
+            }
+            DoExecuteSQL(cmd, false);
+
+            foreach(SqlParameter p in cmd.Parameters)
+            {
+                if(p.Direction == ParameterDirection.InputOutput)
+                {
+                    string colname = p.ParameterName.Substring(1);
+                    if(row.Table.Columns.Contains(colname))
+                    {
+                        row[colname] = p.Value;
+                    }
+                }
+            }
+        }
+
         private static DataTable DoExecuteSQL(SqlCommand cmd, bool loadtable)
         {
             DataTable dt = new();
