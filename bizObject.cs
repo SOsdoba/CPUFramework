@@ -4,6 +4,7 @@ using System.Reflection;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+
 namespace CPUFramework
 {
     public class bizObject <T> : INotifyPropertyChanged where T: bizObject<T>, new()
@@ -21,6 +22,7 @@ namespace CPUFramework
             _typename = t.Name;
             _tablename = _typename;
             if(_tablename.ToLower().StartsWith("biz")) { _tablename = _tablename.Substring(3); }
+            if (_tablename == "RecipeCreate") { _tablename = "Recipe"; }
             _getsproc = _tablename + "Get";
             _updatesproc = _tablename + "Update";
             _deletesproc = _tablename + "Delete";
@@ -67,6 +69,14 @@ namespace CPUFramework
             return this.GetListFromDataTable(dt);
         }
 
+        public List<T> SearchWithId(int val)
+        {
+            SqlCommand cmd = SQLUtility.GetSQLCommand(this.GetSprocName);
+            SQLUtility.SetParamValue(cmd, _primarykeyname, val);
+            DataTable dt = SQLUtility.GetDataTable(cmd);
+            return this.GetListFromDataTable(dt);
+        }
+
         protected List<T> GetListFromDataTable(DataTable dt)
         {
             List<T> lst = new();
@@ -88,6 +98,7 @@ namespace CPUFramework
 
         public void Delete(int id)
         {
+            this.ErrorMessage = "";
             SqlCommand cmd = SQLUtility.GetSQLCommand(_deletesproc);
             SQLUtility.SetParamValue(cmd, _primarykeyparamname, id);
             SQLUtility.ExecuteSQL(cmd);
@@ -95,6 +106,7 @@ namespace CPUFramework
 
         public void Delete()
         {
+            this.ErrorMessage = "";
             PropertyInfo? prop = GetProp(_primarykeyname, true, false);
             if (prop != null)
             {
@@ -114,6 +126,7 @@ namespace CPUFramework
 
         public void Save()
         {
+            this.ErrorMessage = "";
             SqlCommand cmd = SQLUtility.GetSQLCommand(_updatesproc);
             foreach(SqlParameter param in cmd.Parameters)
             {
@@ -137,6 +150,7 @@ namespace CPUFramework
 
         public void Save(DataTable datatable)
         {
+            this.ErrorMessage = "";
             if (datatable.Rows.Count == 0)
             {
                 throw new Exception($"Cannot call {_tablename} Save method because there are no rows in table.");
@@ -160,18 +174,20 @@ namespace CPUFramework
         private void SetProp(string propname, object? value)
         {
             var prop = GetProp(propname, false, true);
-            if(prop != null)
+            if (prop != null)
             {
-                if(value == DBNull.Value) { value = null;}
-                try
-                {
-                    prop.SetValue(this, value);
-                }
-                catch(Exception ex)
-                {
-                    string msg = $"{_typename}.{prop.Name} is being set to {value?.ToString()} and that is the wrong data type. {ex.Message}";
-                    throw new CPUDevException(msg, ex);
-                }
+                if (value == DBNull.Value) { value = null; }
+               
+                    try
+                    {
+                        prop.SetValue(this, value);
+                    }
+                    catch (Exception ex)
+                    {
+                        string msg = $"{_typename}.{prop.Name} is being set to {value?.ToString()} and that is the wrong data type. {ex.Message}";
+                        throw new CPUDevException(msg, ex);
+                    }
+                
             }
         }
 
@@ -180,5 +196,7 @@ namespace CPUFramework
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyname));
         }
+
+        public string ErrorMessage { get; set; } = "";
     }
 }
